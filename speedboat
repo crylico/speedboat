@@ -1,0 +1,802 @@
+#!/usr/bin/env python
+
+# Speedboat by Kyle Levin
+# Digital Ocean API Interface
+#########################################
+
+import requests
+import sys
+import csv
+from os.path import expanduser
+filePath = '%s/.speedboat' % expanduser("~")
+
+class DropCommand:
+	restart, powerCycle, shutDown, powerOff, powerOn, snapshot, destroy, info, resize = range(9)
+
+class Droplet:
+
+	def __init__(self, name, number, status, ip, regionID, imageID, sizeID, backupsActive):
+		self.name = name
+		self.number = number
+		self.status = status
+		self.ip = ip
+		self.regionID = regionID
+		self.imageID = imageID
+		self.sizeID = sizeID
+		self.backupsActive = backupsActive
+
+	def __repr__(self):
+		return '%s - ip: %s - status: %s - region: %s - id: %s' % (self.name, self.ip, self.status, self.regionID, self.number)
+
+class Region:
+
+	def __init__(self, number, name):
+		self.number = number
+		self.name = name
+
+	def __repr__(self):
+		return 'ID: %s - %s' % (self.number, self.name)
+
+class Size:
+
+	def __init__(self, number, slug):
+		self.number = number
+		self.slug = slug
+
+	def __repr__(self):
+		return 'ID: %s - %s' % (self.number, self.slug)
+
+class Key:
+
+	def __init__(self, number, name):
+		self.number = number
+		self.name = name
+
+	def __repr__(self):
+		return 'ID: %s - %s' % (self.number, self.name)
+
+class Image:
+
+	def __init__(self, number, name, distro, isPublic):
+		self.number = number
+		self.name = name
+		self.distro = distro
+		self.isPublic = isPublic
+
+	def __repr__(self):
+		return '%s - ID: %s - %s' % (self.name, self.number, self.distro)
+
+class Ocean:
+
+	def __init__(self, clientKey, apiKey):
+		self.baseURL = 'https://api.digitalocean.com'
+		self.clientKey = clientKey
+		self.apiKey = apiKey
+
+		self.regions = [];
+		self.sizes = [];
+		self.keys = [];
+		self.drops = [];
+		self.images = [];
+
+	def getDroplets(self):
+		self.drops = []
+		r = requests.get('%s/droplets/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		json = r.json();
+		droplets = json['droplets'];
+
+		for droplet in droplets:
+			drop = Droplet(droplet['name'], droplet['id'], droplet['status'], droplet['ip_address'], droplet['region_id'], droplet['image_id'], droplet['size_id'], droplet['backups_active'])
+			self.drops.append(drop)
+
+	def printDroplets(self):
+
+		print 'Droplets'
+		print '========'
+		for drop in self.drops:
+			print drop
+
+	def printDropInfo(self, drop):
+		print 'Droplet Detail Info'
+		print '==================='
+		print 'Name:			%s' 	% drop.name
+		print 'ID:			%s' 		% drop.number
+		print 'Status:			%s' 	% drop.status
+		print 'IP:			%s' 		% drop.ip
+		print 'Region ID:		%s' 	% drop.regionID
+		print 'Image ID:		%s' 	% drop.imageID
+		print 'Size ID:		%s' 		% drop.sizeID
+		print 'Backups Active:		%s' % drop.backupsActive
+
+	def getRegions(self):
+		self.regions = []
+		r = requests.get('%s/regions/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		json = r.json();
+		regions = json['regions'];
+
+		for region in regions:
+			reg = Region(region['id'], region['name']);
+
+			self.regions.append(reg);
+
+	def printRegions(self):
+
+		print 'Regions'
+		print '======='
+		for region in self.regions:
+			print region
+
+	def getSizes(self):
+		self.sizes = []
+		r = requests.get('%s/sizes/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		json = r.json();
+		sizes = json['sizes'];
+
+		for size in sizes:
+			s = Size(size['id'], size['slug'].upper());
+			self.sizes.append(s);
+
+	def printSizes(self):
+
+		print 'Sizes'
+		print '====='
+		for size in self.sizes:
+			print size
+
+	def getKeys(self):
+		self.keys = []
+		r = requests.get('%s/ssh_keys/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		json = r.json();
+
+		keys = json['ssh_keys'];
+
+		for key in keys:
+			k = Key(key['id'], key['name'])
+			self.keys.append(k)
+
+	def printKeys(self):
+
+		print 'SSH Keys'
+		print '========'
+		for key in self.keys:
+			print key
+
+	def getGlobalImages(self):
+		self.images = []
+		r = requests.get('%s/images/?client_id=%s&api_key=%s&filter=global' % (self.baseURL,self.clientKey, self.apiKey))
+		json = r.json();
+		images = json['images'];
+
+		for image in images:
+			img = Image(image['id'], image['name'], image['distribution'], 1)
+			self.images.append(img)
+
+	def getPrivateImages(self):
+		self.images = []
+		r = requests.get('%s/images/?client_id=%s&api_key=%s&filter=my_images' % (self.baseURL,self.clientKey, self.apiKey))
+		json = r.json();
+		images = json['images'];
+
+		for image in images:
+			img = Image(image['id'], image['name'], image['distribution'], 0)
+			self.images.append(img)
+
+	def printImages(self):
+		for image in self.images:
+			print image
+
+	def createDroplet(self):
+		name = sizeID = regionID = imageID = backupsActive = 0
+		size = region = image = 0
+
+		# Choose name of new droplet
+		name = raw_input('Name: ')
+
+		if(name == ''):
+			print 'Cancelled'
+			return
+
+		# Choose size of new droplet
+		self.getSizes();
+		print ''
+		print 'Sizes'
+		print '====='
+		count = 0
+		for size in self.sizes:
+			print '(%s) %s' % (count, size.slug)
+			count += 1
+		print '(x) Cancel'
+		print ''
+		choice = raw_input('Size: ')
+		try:
+			val = int(choice)
+			if(val > len(self.sizes) - 1):
+				print 'Invalid Selection'
+				return
+			size = self.sizes[val]
+			sizeID = size.number
+		except:
+			print 'Cancelled!'
+			return
+
+		# Choose region of new droplet
+
+		self.getRegions();
+		print ''
+		print 'Regions'
+		print '======='
+		count = 0
+		for region in self.regions:
+			print '(%s) %s' % (count, region.name)
+			count +=1
+		print '(x) Cancel'
+		print ''
+		choice = raw_input('Region: ')
+		try:
+			val = int(choice)
+			if(val > len(self.regions) - 1):
+				print 'Invalid Selection'
+				return
+			region = self.regions[val]
+			regionID = region.number
+		except:
+			print 'Cancelled'
+			return
+
+		# Choose image of new droplet
+
+		print ''
+		choice = raw_input('Would you like to create from a global image or personal snapshot/backup? [g/p] ')
+
+		# Global
+		if(choice == 'g'):
+			self.getGlobalImages()
+			print ''
+			print 'Global Images'
+			print '============='
+
+		# Personal
+		elif(choice == 'p'):
+			self.getPrivateImages()
+			print ''
+			print 'Personal Images'
+			print '==============='
+		else:
+			print 'Invalid Selection'
+			return
+
+		count = 0
+		for image in self.images:
+			print '(%s) %s' % (count, image)
+			count += 1
+		print '(x) Cancel'
+		print ''
+		choice = raw_input('Image: ')
+		try:
+			val = int(choice)
+			if(val > len(self.images) - 1):
+				print 'Invalid Selection'
+				return
+			image = self.images[val]
+			imageID = image.number
+		except:
+			print 'Cancelled'
+			
+		# Select SSH keys
+
+		print ''
+		self.getKeys()
+		count = 0
+		for key in self.keys:
+			print '(%s) %s' % (count, key.name)
+			count += 1
+		print '(n) None'
+		print '(x) Cancel'
+		print ''
+		choice = raw_input('SSH Keys: [comma separated - ex. 0,3,4] ')
+
+		if(choice == '' or choice == 'n'):
+			print 'No Keys Selected'
+		elif(choice == 'x'):
+			print 'Cancelled!'
+			return
+		else:
+			indices = choice.split(',')
+			indices = map(int, indices)
+			keyIDs = []
+
+			for index in indices:
+				if(index >= 0) and (index < len(self.keys)):
+					key = self.keys[index]
+					keyIDs.append(key.number)
+
+			listOfKeys = ','.join(map(str,keyIDs))
+
+		# Enable Backups?
+
+		choice = raw_input('Would you like to enable backups on this drop? [y/n] ')
+
+		if(choice == 'y'):
+			backupsActive = 1
+
+		# Confirm that ish
+
+		print ''
+		print 'Droplet Creation'
+		print '================'
+		print 'Name: %s' % name
+		print 'Size: %s' % size.slug
+		print 'Region: %s' % region.name
+		print 'Image: %s' % image.name
+		print 'SSH Keys: %s' % listOfKeys
+		print 'Backups Active: %d' % backupsActive
+		print ''
+		choice = raw_input('Create Drop? [y/n] ')
+
+		if(choice == 'y'):
+			print 'Creating Drop...'
+			r = requests.get('%s/droplets/new?client_id=%s&api_key=%s&name=%s&size_id=%s&image_id=%s&region_id=%s&ssh_key_ids=%s' % (self.baseURL, self.clientKey, self.apiKey, name, sizeID, imageID, regionID, listOfKeys))
+			print 'Done!'
+
+
+	def commandDropletWithName(self, name, command):
+		self.getDroplets();
+
+		matches = []
+
+		for drop in self.drops:
+			if (name in drop.name):
+				matches.append(drop)
+
+		if(len(matches) == 0):
+			print 'No matches found!'
+
+		elif(len(matches) == 1):
+			drop = matches[0]
+
+			if(command == DropCommand.restart):
+				self.restartDroplet(drop)
+			elif(command == DropCommand.powerCycle):
+				self.cycleDroplet(drop)
+			elif(command == DropCommand.shutDown):
+				self.shutDownDroplet(drop)
+			elif(command == DropCommand.powerOff):
+				self.powerOffDroplet(drop)
+			elif(command == DropCommand.powerOn):
+				self.powerOnDroplet(drop)
+			elif(command == DropCommand.destroy):
+				self.destroyDroplet(drop)
+			elif(command == DropCommand.info):
+				self.printDropInfo(drop)
+			elif(command == DropCommand.resize):
+				self.resizeDroplet(drop)
+
+		elif(len(matches) > 1):
+			print 'Several matches were found.'
+			count = 0
+			print 'Droplets'
+			print '========'
+			for d in matches:
+				print '(%s) %s' % (count, d)
+				count += 1
+			print '(x) Cancel'
+			print ''
+
+			prompt = ''
+			if(command == DropCommand.restart):
+				prompt = 'Which droplet would you like to restart? '
+			elif(command == DropCommand.powerCycle):
+				prompt = 'Which droplet would you like to power cycle? '
+			elif(command == DropCommand.shutDown):
+				prompt = 'Which droplet would you like to shut down? '
+			elif(command == DropCommand.powerOff):
+				prompt = 'Which droplet would you like to power off? '
+			elif(command == DropCommand.powerOn):
+				prompt = 'Which droplet would you like to power on? '
+			elif(command == DropCommand.snapshot):
+				prompt = 'Which droplet would you like to snapshot? '
+			elif(command == DropCommand.destroy):
+				prompt = 'Which droplet would you like to destroy? '
+			elif(command == DropCommand.info):
+				prompt = 'Which droplet would you like info about? '
+			elif(command == DropCommand.resize):
+				prompt = 'Which droplet would you like to resize? '
+
+			choice = raw_input(prompt)
+			print ''
+				
+			try:
+				val = int(choice)
+				if(val > len(matches) - 1):
+					print 'Invalid Selection'
+					return
+
+				drop = matches[val]
+
+				if(command == DropCommand.restart):
+					self.restartDroplet(drop)
+				elif(command == DropCommand.powerCycle):
+					self.cycleDroplet(drop)
+				elif(command == DropCommand.shutDown):
+					self.shutDownDroplet(drop)
+				elif(command == DropCommand.powerOff):
+					self.powerOffDroplet(drop)
+				elif(command == DropCommand.powerOn):
+					self.powerOnDroplet(drop)
+				elif(command == DropCommand.snapshot):
+					self.snapshotDroplet(drop)
+				elif(command == DropCommand.destroy):
+					self.destroyDroplet(drop)
+				elif(command == DropCommand.info):
+					self.printDropInfo(drop)
+				elif(command == DropCommand.resize):
+					self.resizeDroplet(drop)
+
+			except ValueError:
+			   print 'Cancelled!'
+
+	def listAllDropletsForCommand(self, command):
+		self.getDroplets();
+
+		count = 0
+
+		print 'Droplets'
+		print '========'
+		for drop in self.drops:
+			print '(%s) %s' % (count, drop)
+			count += 1
+		print '(x) Cancel'
+		print ''
+
+		prompt = ''
+		if(command == DropCommand.restart):
+			prompt = 'Which droplet would you like to restart? '
+		elif(command == DropCommand.powerCycle):
+			prompt = 'Which droplet would you like to power cycle? '
+		elif(command == DropCommand.shutDown):
+			prompt = 'Which droplet would you like to shut down? '
+		elif(command == DropCommand.powerOff):
+			prompt = 'Which droplet would you like to power off? '
+		elif(command == DropCommand.powerOn):
+			prompt = 'Which droplet would you like to power on? '
+		elif(command == DropCommand.snapshot):
+			prompt = 'Which droplet would you like to snapshot? '
+		elif(command == DropCommand.info):
+			prompt = 'Which droplet would you like info about? '
+		elif(command == DropCommand.resize):
+			prompt = 'Which droplet would you like to resize? '
+
+		choice = raw_input(prompt)
+		print ''
+
+		try:
+			val = int(choice)
+
+			if(val > len(self.drops) - 1):
+				print 'Invalid Selection'
+				return
+
+			drop = self.drops[val];
+
+			if(command == DropCommand.restart):
+				self.restartDroplet(drop)
+			elif(command == DropCommand.powerCycle):
+				self.cycleDroplet(drop)
+			elif(command == DropCommand.shutDown):
+				self.shutDownDroplet(drop)
+			elif(command == DropCommand.powerOff):
+				self.powerOffDroplet(drop)
+			elif(command == DropCommand.powerOn):
+				self.powerOnDroplet(drop)
+			elif(command == DropCommand.snapshot):
+				self.snapshotDroplet(drop)
+			elif(command == DropCommand.info):
+				self.printDropInfo(drop)
+			elif(command == DropCommand.resize):
+				self.resizeDroplet(drop)
+
+		except ValueError:
+		   print 'Cancelled!'
+
+	def restartDroplet(self, drop):
+		print 'Restarting %s...' % drop.name
+		r = requests.get('%s/droplets/%s/reboot/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		print 'Done!'
+
+	def cycleDroplet(self, drop):
+		print 'Power Cycling %s...' % drop.name
+		r = requests.get('%s/droplets/%s/power_cycle/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		print 'Done!'
+	
+	def shutDownDroplet(self, drop):
+		print 'Shutting Down %s...' % drop.name
+		r = requests.get('%s/droplets/%s/shutdown/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		print 'Done!'
+	
+	def powerOffDroplet(self, drop):
+		print 'Powering Off %s...' % drop.name
+		r = requests.get('%s/droplets/%s/power_off/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		print 'Done!'
+	
+	def powerOnDroplet(self, drop):
+		print 'Powering On %s...' % drop.name
+		r = requests.get('%s/droplets/%s/power_on/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		print 'Done!'
+
+	def snapshotDroplet(self, drop):
+		choice = raw_input('In order to take a snapshot, the droplet must be shut down. Are you sure you want to do this? [y/n] ')
+
+		if(choice == 'y'):
+			self.powerOffDroplet(drop)
+			print ''
+			choice = raw_input('Snapshot Name [timestamp]: ')
+			print 'Snapshotting %s...' % drop.name
+			if(choice != ''):
+				r = requests.get('%s/droplets/%s/snapshot/?name=%s&client_id=%s&api_key=%s' % (self.baseURL, drop.number, choice, self.clientKey, self.apiKey))
+			else:
+				r = requests.get('%s/droplets/%s/snapshot/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+
+			print 'Done!'
+
+	def destroyDroplet(self, drop):
+		print 'This is dangerous! Attempting to destroy %s' % drop.name
+		choice = raw_input('Are you sure you want to DESTROY this droplet? [y/n] ')
+		if(choice == 'y'):
+
+			print ''
+			choice = raw_input('Would you like to scrub all data from the droplet? [y/n] ')
+			print 'Destroying %s...' % drop.name
+			if(choice == 'y'):
+				r = requests.get('%s/droplets/%s/destroy/?client_id=%s&api_key=%s&scrub_data=1' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+			else:
+				r = requests.get('%s/droplets/%s/destroy/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+			print 'Done!'
+
+	def resizeDroplet(self, drop):
+
+		choice = raw_input('In order to resize, the droplet must be shut down. Are you sure you want to do this? [y/n] ')
+
+		if(choice == 'y'):
+			self.powerOffDroplet(drop)
+			print ''
+			self.getSizes();
+			print 'Sizes'
+			print '====='
+			count = 0
+			for size in self.sizes:
+				print '(%s) %s' % (count, size.slug)
+				count += 1
+			print '(x) Cancel'
+			print ''
+			choice = raw_input('Select a new size: ')
+			try:
+				val = int(choice)
+				if(val > len(self.sizes) - 1):
+					print 'Invalid Selection'
+					return
+				print ''
+				print 'Resizing Drop %s...' % drop.name
+				size = self.sizes[val]
+				r = requests.get('%s/droplets/%s/resize/?client_id=%s&api_key=%s&size_id=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey, size.number))
+				print 'Done! Be sure to turn the Droplet back on.'
+			except:
+				print 'Error'
+
+
+
+def speedBoat(client, api):
+
+	ocean = Ocean(client, api);
+	args = sys.argv;
+
+	if(len(args) == 1):
+		help();
+
+	elif(len(args) == 2):
+
+		# speedboat drops
+		if(args[1] == 'drops'):
+			ocean.getDroplets();
+			ocean.printDroplets();
+		
+		# speedboat regions
+		elif(args[1] == 'regions'):
+			ocean.getRegions();
+			ocean.printRegions();
+
+		# speedboat sizes
+		elif(args[1] == 'sizes'):
+			ocean.getSizes();
+			ocean.printSizes();
+
+		# speedboat keys
+		elif(args[1] == 'keys'):
+			ocean.getKeys();
+			ocean.printKeys();
+
+		# speedboat images
+		elif(args[1] == 'images'):
+			ocean.getPrivateImages()
+			print 'Private Images'
+			print '==============';
+			ocean.printImages();
+
+		# speedboat setup
+		elif(args[1] == 'setup'):
+			setup()
+
+		# speedboat new
+		elif(args[1] == 'new'):
+			ocean.createDroplet()
+
+		# speedboat restart
+		elif(args[1] == 'restart'):
+			ocean.listAllDropletsForCommand(DropCommand.restart);
+
+		# speedboat cycle
+		elif(args[1] == 'cycle'):
+			ocean.listAllDropletsForCommand(DropCommand.powerCycle);
+
+		# speedboat shut
+		elif(args[1] == 'shut'):
+			ocean.listAllDropletsForCommand(DropCommand.shutDown);
+
+		# speedboat off
+		elif(args[1] == 'off'):
+			ocean.listAllDropletsForCommand(DropCommand.powerOff);
+
+		# speedboat on
+		elif(args[1] == 'on'):
+			ocean.listAllDropletsForCommand(DropCommand.powerOn);
+
+		# speedboat snap
+		elif(args[1] == 'snap'):
+			ocean.listAllDropletsForCommand(DropCommand.snapshot);
+
+		# speedboat info
+		elif(args[1] == 'info'):
+			ocean.listAllDropletsForCommand(DropCommand.info);
+
+		# speedboat resize
+		elif(args[1] == 'resize'):
+			ocean.listAllDropletsForCommand(DropCommand.resize);
+
+		else:
+			help();
+
+	elif(len(args) == 3):
+
+		# speedboat images global
+		if(args[1] == 'images' and args[2] == 'global'):
+			ocean.getGlobalImages();
+			print 'Global Images'
+			print '=============';
+			ocean.printImages();
+
+		# speedboat images all
+		elif(args[1] == 'images' and args[2] == 'all'):
+			print 'Global Images'
+			print '============='
+			ocean.getGlobalImages();
+			ocean.printImages();
+			print ''
+			print 'Private Images'
+			print '=============='
+			ocean.getPrivateImages();
+			ocean.printImages();
+
+		# speedboat restart <name>
+		elif(args[1] == 'restart'):
+			ocean.commandDropletWithName(args[2], DropCommand.restart)
+
+		# speedboat cycle <name>
+		elif(args[1] == 'cycle'):
+			ocean.commandDropletWithName(args[2], DropCommand.powerCycle)
+
+		# speedboat shut <name>
+		elif(args[1] == 'shut'):
+			ocean.commandDropletWithName(args[2], DropCommand.shutDown)
+
+		# speedboat off <name>
+		elif(args[1] == 'off'):
+			ocean.commandDropletWithName(args[2], DropCommand.powerOff)
+
+		# speedboat on <name>
+		elif(args[1] == 'on'):
+			ocean.commandDropletWithName(args[2], DropCommand.powerOn)
+
+		# speedboat snap <name>
+		elif(args[1] == 'snap'):
+			ocean.commandDropletWithName(args[2], DropCommand.snapshot)
+
+		# speedboat destroy <name>
+		elif(args[1] == 'destroy'):
+			ocean.commandDropletWithName(args[2], DropCommand.destroy)
+
+		# speedboat info <name>
+		elif(args[1] == 'info'):
+			ocean.commandDropletWithName(args[2], DropCommand.info)
+
+		# speedboat resize <name>
+		elif(args[1] == 'resize'):
+			ocean.commandDropletWithName(args[2], DropCommand.resize)
+
+		else:
+			help();
+
+	else:
+		help();
+
+def help():
+	print 'List Digital Ocean Information'
+	print '=============================='
+	print ''
+	print 'List all Droplets 	- speedboat drops'
+	print 'List All Regions 	- speedboat regions'
+	print 'List All Sizes 		- speedboat sizes'
+	print 'List All SSH Keys 	- speedboat keys'
+	print 'List Private Images 	- speedboat images'
+	print 'List Global Images 	- speedboat images global'
+	print 'List All Images 	- speedboat images all'
+	print ''
+	print 'List of Droplet Commands'
+	print '========================'
+	print ''
+	print 'Create New Droplet 	- speedboat new'
+	print 'Restart 		- speedboat restart <name>'
+	print 'Power Cycle 		- speedboat cycle <name>'
+	print 'Shutdown 		- speedboat shut <name>'
+	print 'Power Off		- speedboat off <name>'
+	print 'Power On		- speedboat on <name>'
+	print 'Snapshot 		- speedboat snap <name>'
+	print 'Print Info 		- speedboat info <name>'
+	print 'Resize 			- speedboat resize <name>'
+
+
+#########################################
+
+def setup():
+
+	print ''
+	print 'Digital Ocean API Credentials'
+	print '============================='
+	print ''
+
+	writer = csv.writer(open(filePath, 'wb'))
+
+	client = raw_input('Enter your client key: ');
+	api = raw_input('Enter your api key: ');
+
+	credentials = {'client' : client, 'api' : api}
+
+	for key, value in credentials.items():
+		writer.writerow([key, value])	
+
+def checkForCredentials():
+#check for credentials
+
+	try:
+		reader = csv.reader(open(filePath, 'rb'))
+		credentials = dict(x for x in reader)
+
+		if(len(credentials.keys()) == 2):
+			return credentials
+		else:
+			return 0
+	except:
+		return 0
+
+
+
+
+print 'Speedboat - the Digital Ocean CLI'
+print ''
+
+credentials = checkForCredentials();
+
+if credentials:
+	speedBoat(credentials['client'], credentials['api']);
+else:
+	setup();
+
+print ''
