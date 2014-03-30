@@ -751,6 +751,7 @@ def help():
 	print 'Snapshot 		- speedboat snap <name>'
 	print 'Print Info 		- speedboat info <name>'
 	print 'Resize 			- speedboat resize <name>'
+	print 'Destroy 		- speedboat destroy <name>'
 
 
 #########################################

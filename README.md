@@ -92,7 +92,9 @@ Print Info - `speedboat info <name>`
 
 Resize - `speedboat resize <name>`
 
-*\<name\> argument is optional*
+Destroy - `speedboat destroy <name>`
+
+*\<name\> argument is optional, except for the destroy command*
 
 ###Without \<name\>
 
@@ -153,5 +155,6 @@ Help
 	Snapshot 			- speedboat snap <name>
 	Print Info 			- speedboat info <name>
 	Resize 				- speedboat resize <name>
+	Destroy 			- speedboat destroy <name>
 	
 	kyles-mbp:speedboat kyle$ 		
