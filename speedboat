@@ -10,7 +10,7 @@ import csv
 from os.path import expanduser
 filePath = '%s/.speedboat' % expanduser("~")
 
-class DropCommand:
+class CommandType:
 	restart, powerCycle, shutDown, powerOff, powerOn, snapshot, destroy, info, resize = range(9)
 
 class Droplet:
@@ -354,21 +354,21 @@ class Ocean:
 		elif(len(matches) == 1):
 			drop = matches[0]
 
-			if(command == DropCommand.restart):
+			if(command == CommandType.restart):
 				self.restartDroplet(drop)
-			elif(command == DropCommand.powerCycle):
+			elif(command == CommandType.powerCycle):
 				self.cycleDroplet(drop)
-			elif(command == DropCommand.shutDown):
+			elif(command == CommandType.shutDown):
 				self.shutDownDroplet(drop)
-			elif(command == DropCommand.powerOff):
+			elif(command == CommandType.powerOff):
 				self.powerOffDroplet(drop)
-			elif(command == DropCommand.powerOn):
+			elif(command == CommandType.powerOn):
 				self.powerOnDroplet(drop)
-			elif(command == DropCommand.destroy):
+			elif(command == CommandType.destroy):
 				self.destroyDroplet(drop)
-			elif(command == DropCommand.info):
+			elif(command == CommandType.info):
 				self.printDropInfo(drop)
-			elif(command == DropCommand.resize):
+			elif(command == CommandType.resize):
 				self.resizeDroplet(drop)
 
 		elif(len(matches) > 1):
@@ -383,23 +383,23 @@ class Ocean:
 			print ''
 
 			prompt = ''
-			if(command == DropCommand.restart):
+			if(command == CommandType.restart):
 				prompt = 'Which droplet would you like to restart? '
-			elif(command == DropCommand.powerCycle):
+			elif(command == CommandType.powerCycle):
 				prompt = 'Which droplet would you like to power cycle? '
-			elif(command == DropCommand.shutDown):
+			elif(command == CommandType.shutDown):
 				prompt = 'Which droplet would you like to shut down? '
-			elif(command == DropCommand.powerOff):
+			elif(command == CommandType.powerOff):
 				prompt = 'Which droplet would you like to power off? '
-			elif(command == DropCommand.powerOn):
+			elif(command == CommandType.powerOn):
 				prompt = 'Which droplet would you like to power on? '
-			elif(command == DropCommand.snapshot):
+			elif(command == CommandType.snapshot):
 				prompt = 'Which droplet would you like to snapshot? '
-			elif(command == DropCommand.destroy):
+			elif(command == CommandType.destroy):
 				prompt = 'Which droplet would you like to destroy? '
-			elif(command == DropCommand.info):
+			elif(command == CommandType.info):
 				prompt = 'Which droplet would you like info about? '
-			elif(command == DropCommand.resize):
+			elif(command == CommandType.resize):
 				prompt = 'Which droplet would you like to resize? '
 
 			choice = raw_input(prompt)
@@ -413,23 +413,23 @@ class Ocean:
 
 				drop = matches[val]
 
-				if(command == DropCommand.restart):
+				if(command == CommandType.restart):
 					self.restartDroplet(drop)
-				elif(command == DropCommand.powerCycle):
+				elif(command == CommandType.powerCycle):
 					self.cycleDroplet(drop)
-				elif(command == DropCommand.shutDown):
+				elif(command == CommandType.shutDown):
 					self.shutDownDroplet(drop)
-				elif(command == DropCommand.powerOff):
+				elif(command == CommandType.powerOff):
 					self.powerOffDroplet(drop)
-				elif(command == DropCommand.powerOn):
+				elif(command == CommandType.powerOn):
 					self.powerOnDroplet(drop)
-				elif(command == DropCommand.snapshot):
+				elif(command == CommandType.snapshot):
 					self.snapshotDroplet(drop)
-				elif(command == DropCommand.destroy):
+				elif(command == CommandType.destroy):
 					self.destroyDroplet(drop)
-				elif(command == DropCommand.info):
+				elif(command == CommandType.info):
 					self.printDropInfo(drop)
-				elif(command == DropCommand.resize):
+				elif(command == CommandType.resize):
 					self.resizeDroplet(drop)
 
 			except ValueError:
@@ -449,21 +449,21 @@ class Ocean:
 		print ''
 
 		prompt = ''
-		if(command == DropCommand.restart):
+		if(command == CommandType.restart):
 			prompt = 'Which droplet would you like to restart? '
-		elif(command == DropCommand.powerCycle):
+		elif(command == CommandType.powerCycle):
 			prompt = 'Which droplet would you like to power cycle? '
-		elif(command == DropCommand.shutDown):
+		elif(command == CommandType.shutDown):
 			prompt = 'Which droplet would you like to shut down? '
-		elif(command == DropCommand.powerOff):
+		elif(command == CommandType.powerOff):
 			prompt = 'Which droplet would you like to power off? '
-		elif(command == DropCommand.powerOn):
+		elif(command == CommandType.powerOn):
 			prompt = 'Which droplet would you like to power on? '
-		elif(command == DropCommand.snapshot):
+		elif(command == CommandType.snapshot):
 			prompt = 'Which droplet would you like to snapshot? '
-		elif(command == DropCommand.info):
+		elif(command == CommandType.info):
 			prompt = 'Which droplet would you like info about? '
-		elif(command == DropCommand.resize):
+		elif(command == CommandType.resize):
 			prompt = 'Which droplet would you like to resize? '
 
 		choice = raw_input(prompt)
@@ -478,21 +478,21 @@ class Ocean:
 
 			drop = self.drops[val];
 
-			if(command == DropCommand.restart):
+			if(command == CommandType.restart):
 				self.restartDroplet(drop)
-			elif(command == DropCommand.powerCycle):
+			elif(command == CommandType.powerCycle):
 				self.cycleDroplet(drop)
-			elif(command == DropCommand.shutDown):
+			elif(command == CommandType.shutDown):
 				self.shutDownDroplet(drop)
-			elif(command == DropCommand.powerOff):
+			elif(command == CommandType.powerOff):
 				self.powerOffDroplet(drop)
-			elif(command == DropCommand.powerOn):
+			elif(command == CommandType.powerOn):
 				self.powerOnDroplet(drop)
-			elif(command == DropCommand.snapshot):
+			elif(command == CommandType.snapshot):
 				self.snapshotDroplet(drop)
-			elif(command == DropCommand.info):
+			elif(command == CommandType.info):
 				self.printDropInfo(drop)
-			elif(command == DropCommand.resize):
+			elif(command == CommandType.resize):
 				self.resizeDroplet(drop)
 
 		except ValueError:
@@ -631,35 +631,35 @@ def speedBoat(client, api):
 
 		# speedboat restart
 		elif(args[1] == 'restart'):
-			ocean.listAllDropletsForCommand(DropCommand.restart);
+			ocean.listAllDropletsForCommand(CommandType.restart);
 
 		# speedboat cycle
 		elif(args[1] == 'cycle'):
-			ocean.listAllDropletsForCommand(DropCommand.powerCycle);
+			ocean.listAllDropletsForCommand(CommandType.powerCycle);
 
 		# speedboat shut
 		elif(args[1] == 'shut'):
-			ocean.listAllDropletsForCommand(DropCommand.shutDown);
+			ocean.listAllDropletsForCommand(CommandType.shutDown);
 
 		# speedboat off
 		elif(args[1] == 'off'):
-			ocean.listAllDropletsForCommand(DropCommand.powerOff);
+			ocean.listAllDropletsForCommand(CommandType.powerOff);
 
 		# speedboat on
 		elif(args[1] == 'on'):
-			ocean.listAllDropletsForCommand(DropCommand.powerOn);
+			ocean.listAllDropletsForCommand(CommandType.powerOn);
 
 		# speedboat snap
 		elif(args[1] == 'snap'):
-			ocean.listAllDropletsForCommand(DropCommand.snapshot);
+			ocean.listAllDropletsForCommand(CommandType.snapshot);
 
 		# speedboat info
 		elif(args[1] == 'info'):
-			ocean.listAllDropletsForCommand(DropCommand.info);
+			ocean.listAllDropletsForCommand(CommandType.info);
 
 		# speedboat resize
 		elif(args[1] == 'resize'):
-			ocean.listAllDropletsForCommand(DropCommand.resize);
+			ocean.listAllDropletsForCommand(CommandType.resize);
 
 		else:
 			help();
@@ -687,39 +687,39 @@ def speedBoat(client, api):
 
 		# speedboat restart <name>
 		elif(args[1] == 'restart'):
-			ocean.commandDropletWithName(args[2], DropCommand.restart)
+			ocean.commandDropletWithName(args[2], CommandType.restart)
 
 		# speedboat cycle <name>
 		elif(args[1] == 'cycle'):
-			ocean.commandDropletWithName(args[2], DropCommand.powerCycle)
+			ocean.commandDropletWithName(args[2], CommandType.powerCycle)
 
 		# speedboat shut <name>
 		elif(args[1] == 'shut'):
-			ocean.commandDropletWithName(args[2], DropCommand.shutDown)
+			ocean.commandDropletWithName(args[2], CommandType.shutDown)
 
 		# speedboat off <name>
 		elif(args[1] == 'off'):
-			ocean.commandDropletWithName(args[2], DropCommand.powerOff)
+			ocean.commandDropletWithName(args[2], CommandType.powerOff)
 
 		# speedboat on <name>
 		elif(args[1] == 'on'):
-			ocean.commandDropletWithName(args[2], DropCommand.powerOn)
+			ocean.commandDropletWithName(args[2], CommandType.powerOn)
 
 		# speedboat snap <name>
 		elif(args[1] == 'snap'):
-			ocean.commandDropletWithName(args[2], DropCommand.snapshot)
+			ocean.commandDropletWithName(args[2], CommandType.snapshot)
 
 		# speedboat destroy <name>
 		elif(args[1] == 'destroy'):
-			ocean.commandDropletWithName(args[2], DropCommand.destroy)
+			ocean.commandDropletWithName(args[2], CommandType.destroy)
 
 		# speedboat info <name>
 		elif(args[1] == 'info'):
-			ocean.commandDropletWithName(args[2], DropCommand.info)
+			ocean.commandDropletWithName(args[2], CommandType.info)
 
 		# speedboat resize <name>
 		elif(args[1] == 'resize'):
-			ocean.commandDropletWithName(args[2], DropCommand.resize)
+			ocean.commandDropletWithName(args[2], CommandType.resize)
 
 		else:
 			help();
