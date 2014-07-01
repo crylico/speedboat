@@ -17,7 +17,7 @@ Setup
 
 Setup speedboat  		- `speedboat setup`
 
-You can get your Client and API keys [here](https://developers.digitalocean.com).
+You can get your API token [here](https://developers.digitalocean.com).
 
 	kyles-mbp:~ kyle$ speedboat setup
 	Speedboat - the Digital Ocean CLI
@@ -26,8 +26,7 @@ You can get your Client and API keys [here](https://developers.digitalocean.com)
 	Digital Ocean API Credentials
 	=============================
 
-	Enter your client key:
-	Enter your api key:
+	Enter your API token:
 
 	kyles-mbp:~ kyle$
 
