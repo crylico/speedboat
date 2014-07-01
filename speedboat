@@ -7,8 +7,9 @@
 import requests
 import sys
 import csv
+import json
 from os.path import expanduser
-filePath = expanduser("~/.speedboat")
+filePath = expanduser("~/.speedboat2")
 
 class CommandType:
 	restart, powerCycle, shutDown, powerOff, powerOn, snapshot, destroy, info, resize = range(9)
@@ -30,21 +31,20 @@ class Droplet:
 
 class Region:
 
-	def __init__(self, number, name):
-		self.number = number
+	def __init__(self, slug, name):
 		self.name = name
-
-	def __repr__(self):
-		return 'ID: %s - %s' % (self.number, self.name)
-
-class Size:
-
-	def __init__(self, number, slug):
-		self.number = number
 		self.slug = slug
 
 	def __repr__(self):
-		return 'ID: %s - %s' % (self.number, self.slug)
+		return '%s - %s' %  (self.slug, self.name)
+
+class Size:
+
+	def __init__(self, slug):
+		self.slug = slug
+
+	def __repr__(self):
+		return self.slug
 
 class Key:
 
@@ -68,10 +68,10 @@ class Image:
 
 class Ocean:
 
-	def __init__(self, clientKey, apiKey):
-		self.baseURL = 'https://api.digitalocean.com'
-		self.clientKey = clientKey
-		self.apiKey = apiKey
+	def __init__(self, token):
+		self.baseURL = 'https://api.digitalocean.com/v2'
+		self.token = token;
+		self.headers = headers = {'Authorization' : 'Bearer %s' % (self.token), 'content-type': 'application/json'}
 
 		self.regions = [];
 		self.sizes = [];
@@ -81,12 +81,12 @@ class Ocean:
 
 	def getDroplets(self):
 		self.drops = []
-		r = requests.get('%s/droplets/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		r = requests.get('%s/droplets' % (self.baseURL), headers=self.headers)
 		json = r.json();
 		droplets = json['droplets'];
 
 		for droplet in droplets:
-			drop = Droplet(droplet['name'], droplet['id'], droplet['status'], droplet['ip_address'], droplet['region_id'], droplet['image_id'], droplet['size_id'], droplet['backups_active'])
+			drop = Droplet(droplet['name'], droplet['id'], droplet['status'], droplet.get('networks').get('v4')[0].get('ip_address'), droplet['region']['slug'], droplet['image']['id'], droplet['size']['slug'], True)
 			self.drops.append(drop)
 
 	def printDroplets(self):
@@ -110,12 +110,12 @@ class Ocean:
 
 	def getRegions(self):
 		self.regions = []
-		r = requests.get('%s/regions/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		r = requests.get('%s/regions' % (self.baseURL), headers=self.headers)
 		json = r.json();
 		regions = json['regions'];
 
 		for region in regions:
-			reg = Region(region['id'], region['name']);
+			reg = Region(region['slug'], region['name']);
 
 			self.regions.append(reg);
 
@@ -128,12 +128,12 @@ class Ocean:
 
 	def getSizes(self):
 		self.sizes = []
-		r = requests.get('%s/sizes/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		r = requests.get('%s/sizes' % (self.baseURL), headers=self.headers)
 		json = r.json();
 		sizes = json['sizes'];
 
 		for size in sizes:
-			s = Size(size['id'], size['slug'].upper());
+			s = Size(size['slug'].upper());
 			self.sizes.append(s);
 
 	def printSizes(self):
@@ -145,7 +145,7 @@ class Ocean:
 
 	def getKeys(self):
 		self.keys = []
-		r = requests.get('%s/ssh_keys/?client_id=%s&api_key=%s' % (self.baseURL,self.clientKey, self.apiKey))
+		r = requests.get('%s/account/keys' % (self.baseURL), headers=self.headers)
 		json = r.json();
 
 		keys = json['ssh_keys'];
@@ -163,31 +163,33 @@ class Ocean:
 
 	def getGlobalImages(self):
 		self.images = []
-		r = requests.get('%s/images/?client_id=%s&api_key=%s&filter=global' % (self.baseURL,self.clientKey, self.apiKey))
+		r = requests.get('%s/images' % (self.baseURL), headers=self.headers)
 		json = r.json();
 		images = json['images'];
 
 		for image in images:
-			img = Image(image['id'], image['name'], image['distribution'], 1)
-			self.images.append(img)
+			if image['public']:
+				img = Image(image['id'], image['name'], image['distribution'], 1)
+				self.images.append(img)
 
 	def getPrivateImages(self):
 		self.images = []
-		r = requests.get('%s/images/?client_id=%s&api_key=%s&filter=my_images' % (self.baseURL,self.clientKey, self.apiKey))
+		r = requests.get('%s/images' % (self.baseURL), headers=self.headers)
 		json = r.json();
 		images = json['images'];
 
 		for image in images:
-			img = Image(image['id'], image['name'], image['distribution'], 0)
-			self.images.append(img)
+			if not image['public']:
+				img = Image(image['id'], image['name'], image['distribution'], 0)
+				self.images.append(img)
 
 	def printImages(self):
 		for image in self.images:
 			print image
 
 	def createDroplet(self):
-		name = sizeID = regionID = imageID = backupsActive = 0
-		size = region = image = 0
+		name = size = region = imageID = backupsActive = 0
+		keyIDs = []
 
 		# Choose name of new droplet
 		name = raw_input('Name: ')
@@ -214,7 +216,6 @@ class Ocean:
 				print 'Invalid Selection'
 				return
 			size = self.sizes[val]
-			sizeID = size.number
 		except:
 			print 'Cancelled!'
 			return
@@ -238,7 +239,6 @@ class Ocean:
 				print 'Invalid Selection'
 				return
 			region = self.regions[val]
-			regionID = region.number
 		except:
 			print 'Cancelled'
 			return
@@ -281,7 +281,8 @@ class Ocean:
 			imageID = image.number
 		except:
 			print 'Cancelled'
-			
+			return
+
 		# Select SSH keys
 
 		print ''
@@ -303,21 +304,18 @@ class Ocean:
 		else:
 			indices = choice.split(',')
 			indices = map(int, indices)
-			keyIDs = []
 
 			for index in indices:
 				if(index >= 0) and (index < len(self.keys)):
 					key = self.keys[index]
 					keyIDs.append(key.number)
 
-			listOfKeys = ','.join(map(str,keyIDs))
-
 		# Enable Backups?
 
 		choice = raw_input('Would you like to enable backups on this drop? [y/n] ')
 
 		if(choice == 'y'):
-			backupsActive = 1
+			backupsActive = True
 
 		# Confirm that ish
 
@@ -326,16 +324,17 @@ class Ocean:
 		print '================'
 		print 'Name: %s' % name
 		print 'Size: %s' % size.slug
-		print 'Region: %s' % region.name
+		print 'Region: %s' % region.slug.upper()
 		print 'Image: %s' % image.name
-		print 'SSH Keys: %s' % listOfKeys
+		print 'SSH Keys: %s' % keyIDs
 		print 'Backups Active: %d' % backupsActive
 		print ''
 		choice = raw_input('Create Drop? [y/n] ')
 
 		if(choice == 'y'):
 			print 'Creating Drop...'
-			r = requests.get('%s/droplets/new?client_id=%s&api_key=%s&name=%s&size_id=%s&image_id=%s&region_id=%s&ssh_key_ids=%s' % (self.baseURL, self.clientKey, self.apiKey, name, sizeID, imageID, regionID, listOfKeys))
+			payload = {'name' : name, 'size' : size.slug, 'region' : region.slug, 'image' : imageID, 'ssh_keys' : keyIDs, 'backups' : backupsActive}
+			r = requests.post('%s/droplets/' % (self.baseURL), data=json.dumps(payload), headers=self.headers)
 			print 'Done!'
 
 
@@ -404,7 +403,7 @@ class Ocean:
 
 			choice = raw_input(prompt)
 			print ''
-				
+
 			try:
 				val = int(choice)
 				if(val > len(matches) - 1):
@@ -500,27 +499,32 @@ class Ocean:
 
 	def restartDroplet(self, drop):
 		print 'Restarting %s...' % drop.name
-		r = requests.get('%s/droplets/%s/reboot/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		payload = {'type' : 'reboot'}
+		r = requests.post('%s/droplets/%s/actions' % (self.baseURL, drop.number), data=json.dumps(payload), headers=self.headers)
 		print 'Done!'
 
 	def cycleDroplet(self, drop):
 		print 'Power Cycling %s...' % drop.name
-		r = requests.get('%s/droplets/%s/power_cycle/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		payload = {'type' : 'power_cycle'}
+		r = requests.post('%s/droplets/%s/actions' % (self.baseURL, drop.number), data=json.dumps(payload), headers=self.headers)
 		print 'Done!'
-	
+
 	def shutDownDroplet(self, drop):
 		print 'Shutting Down %s...' % drop.name
-		r = requests.get('%s/droplets/%s/shutdown/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		payload = {'type' : 'shutdown'}
+		r = requests.post('%s/droplets/%s/actions' % (self.baseURL, drop.number), data=json.dumps(payload), headers=self.headers)
 		print 'Done!'
-	
+
 	def powerOffDroplet(self, drop):
 		print 'Powering Off %s...' % drop.name
-		r = requests.get('%s/droplets/%s/power_off/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		payload = {'type' : 'power_off'}
+		r = requests.post('%s/droplets/%s/actions' % (self.baseURL, drop.number), data=json.dumps(payload), headers=self.headers)
 		print 'Done!'
-	
+
 	def powerOnDroplet(self, drop):
 		print 'Powering On %s...' % drop.name
-		r = requests.get('%s/droplets/%s/power_on/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+		payload = {'type' : 'power_on'}
+		r = requests.post('%s/droplets/%s/actions' % (self.baseURL, drop.number), data=json.dumps(payload), headers=self.headers)
 		print 'Done!'
 
 	def snapshotDroplet(self, drop):
@@ -542,14 +546,9 @@ class Ocean:
 		print 'This is dangerous! Attempting to destroy %s' % drop.name
 		choice = raw_input('Are you sure you want to DESTROY this droplet? [y/n] ')
 		if(choice == 'y'):
-
 			print ''
-			choice = raw_input('Would you like to scrub all data from the droplet? [y/n] ')
 			print 'Destroying %s...' % drop.name
-			if(choice == 'y'):
-				r = requests.get('%s/droplets/%s/destroy/?client_id=%s&api_key=%s&scrub_data=1' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
-			else:
-				r = requests.get('%s/droplets/%s/destroy/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
+			r = requests.delete('%s/droplets/%s' % (self.baseURL, drop.number), headers=self.headers)
 			print 'Done!'
 
 	def resizeDroplet(self, drop):
@@ -577,16 +576,17 @@ class Ocean:
 				print ''
 				print 'Resizing Drop %s...' % drop.name
 				size = self.sizes[val]
-				r = requests.get('%s/droplets/%s/resize/?client_id=%s&api_key=%s&size_id=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey, size.number))
-				print 'Done! Be sure to turn the Droplet back on.'
+				payload = {'type' : 'resize', 'size' : size.slug}
+				r = requests.post('%s/droplets/%s/actions' % (self.baseURL, drop.number), data=json.dumps(payload), headers=self.headers)
+				print 'Done!'
 			except:
 				print 'Error'
 
 
 
-def speedBoat(client, api):
+def speedBoat(token):
 
-	ocean = Ocean(client, api);
+	ocean = Ocean(token);
 	args = sys.argv;
 
 	if(len(args) == 1):
@@ -598,7 +598,7 @@ def speedBoat(client, api):
 		if(args[1] == 'drops'):
 			ocean.getDroplets();
 			ocean.printDroplets();
-		
+
 		# speedboat regions
 		elif(args[1] == 'regions'):
 			ocean.getRegions();
@@ -765,13 +765,12 @@ def setup():
 
 	writer = csv.writer(open(filePath, 'wb'))
 
-	client = raw_input('Enter your client key: ');
-	api = raw_input('Enter your api key: ');
+	token = raw_input('Enter your API token: ')
 
-	credentials = {'client' : client, 'api' : api}
+	credentials = {'token' : token}
 
 	for key, value in credentials.items():
-		writer.writerow([key, value])	
+		writer.writerow([key, value])
 
 def checkForCredentials():
 #check for credentials
@@ -780,7 +779,7 @@ def checkForCredentials():
 		reader = csv.reader(open(filePath, 'rb'))
 		credentials = dict(x for x in reader)
 
-		if(len(credentials.keys()) == 2):
+		if(len(credentials.keys()) == 1):
 			return credentials
 		else:
 			return 0
@@ -796,7 +795,7 @@ print ''
 credentials = checkForCredentials();
 
 if credentials:
-	speedBoat(credentials['client'], credentials['api']);
+	speedBoat(credentials['token']);
 else:
 	setup();
 
