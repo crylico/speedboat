@@ -8,11 +8,12 @@ import requests
 import sys
 import csv
 import json
+import webbrowser
 from os.path import expanduser
 filePath = expanduser("~/.speedboat2")
 
 class CommandType:
-	restart, powerCycle, shutDown, powerOff, powerOn, snapshot, destroy, info, resize = range(9)
+	restart, powerCycle, shutDown, powerOff, powerOn, snapshot, destroy, info, resize, vnc = range(10)
 
 class Droplet:
 
@@ -70,20 +71,20 @@ class Ocean:
 
 	def __init__(self, token):
 		self.baseURL = 'https://api.digitalocean.com/v2'
-		self.token = token;
-		self.headers = headers = {'Authorization' : 'Bearer %s' % (self.token), 'content-type': 'application/json'}
+		self.token = token
+		self.headers = {'Authorization' : 'Bearer %s' % (self.token), 'content-type': 'application/json'}
 
-		self.regions = [];
-		self.sizes = [];
-		self.keys = [];
-		self.drops = [];
-		self.images = [];
+		self.regions = []
+		self.sizes = []
+		self.keys = []
+		self.drops = []
+		self.images = []
 
 	def getDroplets(self):
 		self.drops = []
 		r = requests.get('%s/droplets' % (self.baseURL), headers=self.headers)
-		json = r.json();
-		droplets = json['droplets'];
+		json = r.json()
+		droplets = json['droplets']
 
 		for droplet in droplets:
 			drop = Droplet(droplet['name'], droplet['id'], droplet['status'], droplet.get('networks').get('v4')[0].get('ip_address'), droplet['region']['slug'], droplet['image']['id'], droplet['size']['slug'], True)
@@ -111,13 +112,13 @@ class Ocean:
 	def getRegions(self):
 		self.regions = []
 		r = requests.get('%s/regions' % (self.baseURL), headers=self.headers)
-		json = r.json();
-		regions = json['regions'];
+		json = r.json()
+		regions = json['regions']
 
 		for region in regions:
-			reg = Region(region['slug'], region['name']);
+			reg = Region(region['slug'], region['name'])
 
-			self.regions.append(reg);
+			self.regions.append(reg)
 
 	def printRegions(self):
 
@@ -129,12 +130,12 @@ class Ocean:
 	def getSizes(self):
 		self.sizes = []
 		r = requests.get('%s/sizes' % (self.baseURL), headers=self.headers)
-		json = r.json();
-		sizes = json['sizes'];
+		json = r.json()
+		sizes = json['sizes']
 
 		for size in sizes:
-			s = Size(size['slug'].upper());
-			self.sizes.append(s);
+			s = Size(size['slug'].upper())
+			self.sizes.append(s)
 
 	def printSizes(self):
 
@@ -146,9 +147,9 @@ class Ocean:
 	def getKeys(self):
 		self.keys = []
 		r = requests.get('%s/account/keys' % (self.baseURL), headers=self.headers)
-		json = r.json();
+		json = r.json()
 
-		keys = json['ssh_keys'];
+		keys = json['ssh_keys']
 
 		for key in keys:
 			k = Key(key['id'], key['name'])
@@ -164,8 +165,8 @@ class Ocean:
 	def getGlobalImages(self):
 		self.images = []
 		r = requests.get('%s/images' % (self.baseURL), headers=self.headers)
-		json = r.json();
-		images = json['images'];
+		json = r.json()
+		images = json['images']
 
 		for image in images:
 			if image['public']:
@@ -175,8 +176,8 @@ class Ocean:
 	def getPrivateImages(self):
 		self.images = []
 		r = requests.get('%s/images' % (self.baseURL), headers=self.headers)
-		json = r.json();
-		images = json['images'];
+		json = r.json()
+		images = json['images']
 
 		for image in images:
 			if not image['public']:
@@ -199,7 +200,7 @@ class Ocean:
 			return
 
 		# Choose size of new droplet
-		self.getSizes();
+		self.getSizes()
 		print ''
 		print 'Sizes'
 		print '====='
@@ -222,7 +223,7 @@ class Ocean:
 
 		# Choose region of new droplet
 
-		self.getRegions();
+		self.getRegions()
 		print ''
 		print 'Regions'
 		print '======='
@@ -339,7 +340,7 @@ class Ocean:
 
 
 	def commandDropletWithName(self, name, command):
-		self.getDroplets();
+		self.getDroplets()
 
 		matches = []
 
@@ -369,6 +370,8 @@ class Ocean:
 				self.printDropInfo(drop)
 			elif(command == CommandType.resize):
 				self.resizeDroplet(drop)
+			elif(command == CommandType.vnc):
+				self.vncDroplet(drop)
 
 		elif(len(matches) > 1):
 			print 'Several matches were found.'
@@ -400,6 +403,8 @@ class Ocean:
 				prompt = 'Which droplet would you like info about? '
 			elif(command == CommandType.resize):
 				prompt = 'Which droplet would you like to resize? '
+			elif(command == CommandType.vnc):
+				prompt = 'Which droplet would you like to vnc into? '
 
 			choice = raw_input(prompt)
 			print ''
@@ -430,12 +435,14 @@ class Ocean:
 					self.printDropInfo(drop)
 				elif(command == CommandType.resize):
 					self.resizeDroplet(drop)
+				elif(command == CommandType.vnc):
+					self.vncDroplet(drop)
 
 			except ValueError:
 			   print 'Cancelled!'
 
 	def listAllDropletsForCommand(self, command):
-		self.getDroplets();
+		self.getDroplets()
 
 		count = 0
 
@@ -464,6 +471,8 @@ class Ocean:
 			prompt = 'Which droplet would you like info about? '
 		elif(command == CommandType.resize):
 			prompt = 'Which droplet would you like to resize? '
+		elif(command == CommandType.vnc):
+			prompt = 'Which droplet would you like to vnc into? '
 
 		choice = raw_input(prompt)
 		print ''
@@ -475,7 +484,7 @@ class Ocean:
 				print 'Invalid Selection'
 				return
 
-			drop = self.drops[val];
+			drop = self.drops[val]
 
 			if(command == CommandType.restart):
 				self.restartDroplet(drop)
@@ -493,6 +502,8 @@ class Ocean:
 				self.printDropInfo(drop)
 			elif(command == CommandType.resize):
 				self.resizeDroplet(drop)
+			elif(command == CommandType.vnc):
+				self.vncDroplet(drop)
 
 		except ValueError:
 		   print 'Cancelled!'
@@ -558,7 +569,7 @@ class Ocean:
 		if(choice == 'y'):
 			self.powerOffDroplet(drop)
 			print ''
-			self.getSizes();
+			self.getSizes()
 			print 'Sizes'
 			print '====='
 			count = 0
@@ -582,44 +593,48 @@ class Ocean:
 			except:
 				print 'Error'
 
+	def vncDroplet(self, drop):
+		print 'Connecting to %s via VNC in the browser!' % (drop.name)
+		webbrowser.open('https://cloud.digitalocean.com/droplets/%s/console' % (drop.number))
+
 
 
 def speedBoat(token):
 
-	ocean = Ocean(token);
-	args = sys.argv;
+	ocean = Ocean(token)
+	args = sys.argv
 
 	if(len(args) == 1):
-		help();
+		help()
 
 	elif(len(args) == 2):
 
 		# speedboat drops
 		if(args[1] == 'drops'):
-			ocean.getDroplets();
-			ocean.printDroplets();
+			ocean.getDroplets()
+			ocean.printDroplets()
 
 		# speedboat regions
 		elif(args[1] == 'regions'):
-			ocean.getRegions();
-			ocean.printRegions();
+			ocean.getRegions()
+			ocean.printRegions()
 
 		# speedboat sizes
 		elif(args[1] == 'sizes'):
-			ocean.getSizes();
-			ocean.printSizes();
+			ocean.getSizes()
+			ocean.printSizes()
 
 		# speedboat keys
 		elif(args[1] == 'keys'):
-			ocean.getKeys();
-			ocean.printKeys();
+			ocean.getKeys()
+			ocean.printKeys()
 
 		# speedboat images
 		elif(args[1] == 'images'):
 			ocean.getPrivateImages()
 			print 'Private Images'
-			print '==============';
-			ocean.printImages();
+			print '=============='
+			ocean.printImages()
 
 		# speedboat setup
 		elif(args[1] == 'setup'):
@@ -631,59 +646,62 @@ def speedBoat(token):
 
 		# speedboat restart
 		elif(args[1] == 'restart'):
-			ocean.listAllDropletsForCommand(CommandType.restart);
+			ocean.listAllDropletsForCommand(CommandType.restart)
 
 		# speedboat cycle
 		elif(args[1] == 'cycle'):
-			ocean.listAllDropletsForCommand(CommandType.powerCycle);
+			ocean.listAllDropletsForCommand(CommandType.powerCycle)
 
 		# speedboat shut
 		elif(args[1] == 'shut'):
-			ocean.listAllDropletsForCommand(CommandType.shutDown);
+			ocean.listAllDropletsForCommand(CommandType.shutDown)
 
 		# speedboat off
 		elif(args[1] == 'off'):
-			ocean.listAllDropletsForCommand(CommandType.powerOff);
+			ocean.listAllDropletsForCommand(CommandType.powerOff)
 
 		# speedboat on
 		elif(args[1] == 'on'):
-			ocean.listAllDropletsForCommand(CommandType.powerOn);
+			ocean.listAllDropletsForCommand(CommandType.powerOn)
 
 		# speedboat snap
 		elif(args[1] == 'snap'):
-			ocean.listAllDropletsForCommand(CommandType.snapshot);
+			ocean.listAllDropletsForCommand(CommandType.snapshot)
 
 		# speedboat info
 		elif(args[1] == 'info'):
-			ocean.listAllDropletsForCommand(CommandType.info);
+			ocean.listAllDropletsForCommand(CommandType.info)
 
 		# speedboat resize
 		elif(args[1] == 'resize'):
-			ocean.listAllDropletsForCommand(CommandType.resize);
+			ocean.listAllDropletsForCommand(CommandType.resize)
+
+		elif(args[1] == 'vnc'):
+			ocean.listAllDropletsForCommand(CommandType.vnc)
 
 		else:
-			help();
+			help()
 
 	elif(len(args) == 3):
 
 		# speedboat images global
 		if(args[1] == 'images' and args[2] == 'global'):
-			ocean.getGlobalImages();
+			ocean.getGlobalImages()
 			print 'Global Images'
-			print '=============';
-			ocean.printImages();
+			print '============='
+			ocean.printImages()
 
 		# speedboat images all
 		elif(args[1] == 'images' and args[2] == 'all'):
 			print 'Global Images'
 			print '============='
-			ocean.getGlobalImages();
-			ocean.printImages();
+			ocean.getGlobalImages()
+			ocean.printImages()
 			print ''
 			print 'Private Images'
 			print '=============='
-			ocean.getPrivateImages();
-			ocean.printImages();
+			ocean.getPrivateImages()
+			ocean.printImages()
 
 		# speedboat restart <name>
 		elif(args[1] == 'restart'):
@@ -721,11 +739,15 @@ def speedBoat(token):
 		elif(args[1] == 'resize'):
 			ocean.commandDropletWithName(args[2], CommandType.resize)
 
+		# speedboat vnc <name>
+		elif(args[1] == 'vnc'):
+			ocean.commandDropletWithName(args[2], CommandType.vnc)
+
 		else:
-			help();
+			help()
 
 	else:
-		help();
+		help()
 
 def help():
 	print 'List Digital Ocean Information'
@@ -792,11 +814,11 @@ def checkForCredentials():
 print 'Speedboat - the Digital Ocean CLI'
 print ''
 
-credentials = checkForCredentials();
+credentials = checkForCredentials()
 
 if credentials:
-	speedBoat(credentials['token']);
+	speedBoat(credentials['token'])
 else:
-	setup();
+	setup()
 
 print ''
