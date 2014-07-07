@@ -90,8 +90,6 @@ Power Off - `speedboat off <name>`
 
 Power On - `speedboat on <name>`
 
-Snapshot - `speedboat snap <name>`
-
 Print Info - `speedboat info <name>`
 
 Resize - `speedboat resize <name>`
@@ -156,7 +154,6 @@ Help
 	Shutdown 			- speedboat shut <name>
 	Power Off			- speedboat off <name>
 	Power On			- speedboat on <name>
-	Snapshot 			- speedboat snap <name>
 	Print Info 			- speedboat info <name>
 	Resize 				- speedboat resize <name>
 	Destroy 			- speedboat destroy <name>

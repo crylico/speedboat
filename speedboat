@@ -13,7 +13,7 @@ from os.path import expanduser
 filePath = expanduser("~/.speedboat2")
 
 class CommandType:
-	restart, powerCycle, shutDown, powerOff, powerOn, snapshot, destroy, info, resize, vnc = range(10)
+	restart, powerCycle, shutDown, powerOff, powerOn, destroy, info, resize, vnc = range(9)
 
 class Droplet:
 
@@ -395,8 +395,6 @@ class Ocean:
 				prompt = 'Which droplet would you like to power off? '
 			elif(command == CommandType.powerOn):
 				prompt = 'Which droplet would you like to power on? '
-			elif(command == CommandType.snapshot):
-				prompt = 'Which droplet would you like to snapshot? '
 			elif(command == CommandType.destroy):
 				prompt = 'Which droplet would you like to destroy? '
 			elif(command == CommandType.info):
@@ -427,8 +425,6 @@ class Ocean:
 					self.powerOffDroplet(drop)
 				elif(command == CommandType.powerOn):
 					self.powerOnDroplet(drop)
-				elif(command == CommandType.snapshot):
-					self.snapshotDroplet(drop)
 				elif(command == CommandType.destroy):
 					self.destroyDroplet(drop)
 				elif(command == CommandType.info):
@@ -465,8 +461,6 @@ class Ocean:
 			prompt = 'Which droplet would you like to power off? '
 		elif(command == CommandType.powerOn):
 			prompt = 'Which droplet would you like to power on? '
-		elif(command == CommandType.snapshot):
-			prompt = 'Which droplet would you like to snapshot? '
 		elif(command == CommandType.info):
 			prompt = 'Which droplet would you like info about? '
 		elif(command == CommandType.resize):
@@ -496,8 +490,6 @@ class Ocean:
 				self.powerOffDroplet(drop)
 			elif(command == CommandType.powerOn):
 				self.powerOnDroplet(drop)
-			elif(command == CommandType.snapshot):
-				self.snapshotDroplet(drop)
 			elif(command == CommandType.info):
 				self.printDropInfo(drop)
 			elif(command == CommandType.resize):
@@ -537,21 +529,6 @@ class Ocean:
 		payload = {'type' : 'power_on'}
 		r = requests.post('%s/droplets/%s/actions' % (self.baseURL, drop.number), data=json.dumps(payload), headers=self.headers)
 		print 'Done!'
-
-	def snapshotDroplet(self, drop):
-		choice = raw_input('In order to take a snapshot, the droplet must be shut down. Are you sure you want to do this? [y/n] ')
-
-		if(choice == 'y'):
-			self.powerOffDroplet(drop)
-			print ''
-			choice = raw_input('Snapshot Name [timestamp]: ')
-			print 'Snapshotting %s...' % drop.name
-			if(choice != ''):
-				r = requests.get('%s/droplets/%s/snapshot/?name=%s&client_id=%s&api_key=%s' % (self.baseURL, drop.number, choice, self.clientKey, self.apiKey))
-			else:
-				r = requests.get('%s/droplets/%s/snapshot/?client_id=%s&api_key=%s' % (self.baseURL, drop.number, self.clientKey, self.apiKey))
-
-			print 'Done!'
 
 	def destroyDroplet(self, drop):
 		print 'This is dangerous! Attempting to destroy %s' % drop.name
@@ -664,10 +641,6 @@ def speedBoat(token):
 		elif(args[1] == 'on'):
 			ocean.listAllDropletsForCommand(CommandType.powerOn)
 
-		# speedboat snap
-		elif(args[1] == 'snap'):
-			ocean.listAllDropletsForCommand(CommandType.snapshot)
-
 		# speedboat info
 		elif(args[1] == 'info'):
 			ocean.listAllDropletsForCommand(CommandType.info)
@@ -723,10 +696,6 @@ def speedBoat(token):
 		elif(args[1] == 'on'):
 			ocean.commandDropletWithName(args[2], CommandType.powerOn)
 
-		# speedboat snap <name>
-		elif(args[1] == 'snap'):
-			ocean.commandDropletWithName(args[2], CommandType.snapshot)
-
 		# speedboat destroy <name>
 		elif(args[1] == 'destroy'):
 			ocean.commandDropletWithName(args[2], CommandType.destroy)
@@ -770,7 +739,6 @@ def help():
 	print 'Shutdown 		- speedboat shut <name>'
 	print 'Power Off		- speedboat off <name>'
 	print 'Power On		- speedboat on <name>'
-	print 'Snapshot 		- speedboat snap <name>'
 	print 'Print Info 		- speedboat info <name>'
 	print 'Resize 			- speedboat resize <name>'
 	print 'Destroy 		- speedboat destroy <name>'
